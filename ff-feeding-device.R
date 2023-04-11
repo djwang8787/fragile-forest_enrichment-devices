@@ -1,7 +1,5 @@
-library('dplyr')
-library('ggplot2')
-library("lubridate")
-library('reshape2')
+
+pacman::p_load(dplyr, ggplot2, lubridate, reshape2)
 
 #### BoH data ####
 # Only lemurs
@@ -61,17 +59,62 @@ c.data %>%
   scale_x_continuous(breaks = seq(1, 12, 1)) +
   facet_wrap(.~Time, ncol = 1)
 
+##### Coarse device-centric approach analysis #####
+c.data.alys = biodome %>%
+  select(-c(Time, Weather)) %>%
+  pivot_longer(cols = CP:Lemur, names_to = "Species", values_to = "counts")
+
+c.model = aov(counts~Device + Species,
+              data = c.data.alys)
+summary(c.model)
+TukeyHSD(c.model)
+
+c.model2 = lm(counts~Device,
+              data = c.data.alys)
+c.model0= lm(counts~1,
+              data = c.data.alys)
+
+c.model1 = lm(counts~Species,
+              data = c.data.alys)
+c.model3 = lm(counts~Device + Species,
+              data = c.data.alys)
+
+MuMIn::model.sel(c.model0, c.model1, c.model2, c.model3)
+stargazer::stargazer(c.model0, c.model1, c.model2, c.model3,
+                     type = "text",
+                     title = "Regression results",
+                     out= "dat1.text")
+
+##### Coarse device-centric approach viz #####
+c.data.device.viz = c.data.alys %>%
+  group_by(Device) %>%
+  summarise(counts = sum(counts),
+            mean = mean(counts),
+            sd = sd(counts)) %>%
+  mutate(total = sum(counts),
+         prop = (counts/total)*100)
+
+c.data.alys %>%
+  filter(Device %in% c("Ball")) %>%
+  summarise(mean(counts))
+
+ggplot(c.data.device.viz) +
+  geom_bar(aes(x = Device, y = counts, fill = Device), stat = "identity") +
+  theme_minimal() +
+  ylab("Counts of interaction") +
+  theme(legend.position = "none")
+
 ##### Device-centric ####
 device.data = biodome %>%
   filter(Device %in% c("Basket", "Pipe")) %>%
   group_by(newDate, Device) %>%
-  mutate(Total = sum(CP, LMD, AP, WD, CHACA, NIC,MAGPIE, PS, BM, VS, Lemur)) %>%
-  select()
+  mutate(Total = sum(CP, LMD, AP, WD, CHACA, NIC,MAGPIE, PS, BM, VS, Lemur))
+
 
 device.data = device.data %>%
   group_by(newDate) %>%
   mutate(Device.total = sum(CP, LMD, AP, WD, CHACA, NIC,MAGPIE, PS, BM, VS, Lemur),
-         Prop = Device.total/Total*100) %>%
+         Prop = (Device.total/Total)*100) %>%
   select(newDate, Time, Device, Device.total, Total, Prop)
 
 device.data = melt(device.data, variable.name = "Species", value.name = "Counts", id = c("newDate","Device","Total"))
@@ -80,6 +123,8 @@ device.data = device.data %>%
   group_by(newDate, Species, Device) %>%
   dplyr::summarise(Prop = Counts/Total*100) %>%
   arrange(newDate)
+
+
 prop.daily.biodome$Session = rep(1:12, each = 44)
 
 
