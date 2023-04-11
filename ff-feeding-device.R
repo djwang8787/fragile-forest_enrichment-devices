@@ -86,6 +86,7 @@ stargazer::stargazer(c.model0, c.model1, c.model2, c.model3,
                      out= "dat1.text")
 
 ##### Coarse device-centric approach viz #####
+# viz by device
 c.data.device.viz = c.data.alys %>%
   group_by(Device) %>%
   summarise(counts = sum(counts),
@@ -94,17 +95,24 @@ c.data.device.viz = c.data.alys %>%
   mutate(total = sum(counts),
          prop = (counts/total)*100)
 
-c.data.alys %>%
-  filter(Device %in% c("Ball")) %>%
-  summarise(mean(counts))
-
 ggplot(c.data.device.viz) +
   geom_bar(aes(x = Device, y = counts, fill = Device), stat = "identity") +
   theme_minimal() +
   ylab("Counts of interaction") +
   theme(legend.position = "none")
 
-##### Device-centric ####
+# viz by proportional:species
+c.data.species.viz = c.data.alys %>%
+  group_by(Device, Species) %>%
+  summarise(counts = sum(counts),
+            mean = mean(counts),
+            sd = sd(counts)) %>%
+  mutate(total = sum(counts),
+         prop = (counts/total)*100)
+
+# fuck it; too much work to do.
+
+##### Device-centric; ignore below, defunct. ####
 device.data = biodome %>%
   filter(Device %in% c("Basket", "Pipe")) %>%
   group_by(newDate, Device) %>%
@@ -127,7 +135,6 @@ device.data = device.data %>%
 
 prop.daily.biodome$Session = rep(1:12, each = 44)
 
-
 prop.daily.biodome %>% filter(Device == "Ball") %>%
 ggplot(., aes(x = Session, y = Prop, fill = Species)) +
   geom_bar(stat = "identity", position = position_dodge(), colour = "black")+
@@ -136,7 +143,6 @@ ggplot(., aes(x = Session, y = Prop, fill = Species)) +
   theme_minimal() +
   theme(legend.position = "bottom") +
   scale_x_continuous(breaks = seq(1, 12, 1))
-
 
 prop.daily.biodome %>% filter(Device == "Pipe") %>%
   ggplot(., aes(x = Session, y = Prop, fill = Species)) +
